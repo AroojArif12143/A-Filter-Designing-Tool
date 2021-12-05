@@ -1,0 +1,402 @@
+classdef app1 < matlab.apps.AppBase
+    % Properties that correspond to app components
+    properties (Access = public)
+        UIFigure                      matlab.ui.Figure
+        FIRButton                     matlab.ui.control.Button
+        WindowDropDownLabel           matlab.ui.control.Label
+        WindowDropDown                matlab.ui.control.DropDown
+        SamplingFrequencyEditFieldLabel  matlab.ui.control.Label
+        SamplingFrequencyEditField    matlab.ui.control.NumericEditField
+        FilterOrderEditFieldLabel     matlab.ui.control.Label
+        FilterOrderEditField          matlab.ui.control.NumericEditField
+        TypeDropDownLabel             matlab.ui.control.Label
+        TypeDropDown                  matlab.ui.control.DropDown
+        DesignTechniqueDropDownLabel  matlab.ui.control.Label
+        DesignTechniqueDropDown       matlab.ui.control.DropDown
+        ResponseTypeDropDownLabel     matlab.ui.control.Label
+        ResponseTypeDropDown          matlab.ui.control.DropDown
+        IIRButton                     matlab.ui.control.Button
+        UIAxes                        matlab.ui.control.UIAxes
+        Cutoff1EditFieldLabel         matlab.ui.control.Label
+        Cutoff1EditField              matlab.ui.control.NumericEditField
+        Cutoff2EditFieldLabel         matlab.ui.control.Label
+        Cutoff2EditField              matlab.ui.control.NumericEditField
+        UIAxes2                       matlab.ui.control.UIAxes
+        UIAxes3                       matlab.ui.control.UIAxes
+    end
+    methods (Access = private)
+        % Value changed function: Cutoff1EditField
+        function CutOff1(app, event)
+            value = app.Cutoff1EditField.Value;
+            
+        end
+        % Value changed function: Cutoff2EditField
+        function Cutoff2EditFieldValueChanged(app, event)
+            value = app.Cutoff2EditField.Value;
+            
+        end
+        % Value changed function: DesignTechniqueDropDown
+        function DesignTechniqueDropDownValueChanged(app, event)
+            value = app.DesignTechniqueDropDown.Value;
+            
+        end
+        % Button pushed function: FIRButton
+        function FIRButtonPushed(app, event)
+            userFilterType = app.TypeDropDown.Value;
+            userWindow = app.WindowDropDown.Value;
+            Fs = app.SamplingFrequencyEditField.Value;
+            if Fs == 0
+                Fs = 8000;
+            end
+            
+            W = app.Cutoff1EditField.Value;
+            if W == 0
+                W = 1000;
+            end
+            
+            W2 = app.Cutoff2EditField.Value;
+            if W2 == 0
+                W2 = 2000;
+            end
+            
+            N = app.FilterOrderEditField.Value;
+            if N == 0
+                N = 200;
+            end
+            
+            if strcmp(userFilterType,'bandpass') 
+                W = [W W2];
+            elseif strcmp(userFilterType,'bandstop') 
+                W = [W W2];
+                userFilterType = [];
+                userFilterType = 'stop';
+            else
+            end
+            
+            W=W./(Fs/2);
+            
+            if strcmp(userWindow,'rectwin')
+                userWindow=rectwin(N+1);
+            elseif strcmp(userWindow,'hann')
+                userWindow=hann(N+1);
+            elseif strcmp(userWindow,'hamming')
+                userWindow=hamming(N+1);
+            elseif strcmp(userWindow,'blackman')
+                userWindow=blackman(N+1);
+            elseif strcmp(userWindow,'kaiser')
+                userWindow=kaiser(N+1);
+            else
+            end
+            
+            
+            
+            B=fir1(N,W,userFilterType,userWindow); 
+            A=1;           
+            
+            assignin('base','B',B)
+            assignin('base','A',A)
+            
+            [h2,w2] = freqz(B,A);    
+            plot(app.UIAxes, w2/pi,20*log10(abs(h2)))
+            
+            [h1,w1] = phasez(B,A);
+            plot(app.UIAxes2, w1/pi, h1)
+            
+            [h3,w3] = grpdelay(B,A,N+1);            
+            plot(app.UIAxes3, w3/pi, h3)
+            
+        end
+        % Value changed function: FilterOrderEditField
+        function FilterOrderField(app, event)
+            value = app.FilterOrderEditField.Value;
+            if value == 0
+                app.FilterOrderEditField.Value = 200;
+                value = app.FilterOrderEditField.Value;
+            end
+        end
+        % Value changed function: SamplingFrequencyEditField
+        function FsField(app, event)
+            value = app.SamplingFrequencyEditField.Value;
+            if value == 0
+                app.SamplingFrequencyEditField.Value = 8000;
+                value = app.SamplingFrequencyEditField.Value;
+            end
+        end
+        % Button pushed function: IIRButton
+        function IIRbutton(app, event)
+            userFilterType = app.TypeDropDown.Value;
+            userFilterResponseType = app.ResponseTypeDropDown.Value;
+            
+            Fs = app.SamplingFrequencyEditField.Value;
+            if Fs == 0
+                Fs = 8000;
+                app.SamplingFrequencyEditField.Value = 8000;
+            end
+            
+            W = app.Cutoff1EditField.Value;
+            if W == 0
+                W = 1000;
+            end
+            
+            W2 = app.Cutoff2EditField.Value;
+            if W2 == 0
+                W2 = 2000;
+            end
+            
+            N = app.FilterOrderEditField.Value;
+            if N == 0
+                N = 200;
+            end
+            
+            if strcmp(userFilterType,'bandpass') 
+                W = [W W2];
+            elseif strcmp(userFilterType,'bandstop') 
+                W = [W W2];
+            else
+            end
+            
+            W=W./(Fs/2);            
+            
+            if strcmp(userFilterResponseType,'Butterworth')
+                [Z1,P1,K1] = butter(N,W,userFilterType);
+                [B,A] = butter(N,W,userFilterType);
+            elseif strcmp(userFilterResponseType,'Chebyshev I')
+                [Z1,P1,K1] = cheby1(N,5,W,userFilterType);
+                [B,A] = cheby1(N,5,W,userFilterType);
+            elseif strcmp(userFilterResponseType,'Chebyshev II')
+                [Z1,P1,K1] = cheby2(N,5,W,userFilterType);
+                [B,A] = cheby2(N,5,W,userFilterType);
+            else
+            end
+            
+            assignin('base','B',B)
+            assignin('base','A',A)
+            
+            % Bilinear or Impulse Invariance
+            if strcmp(app.DesignTechniqueDropDown.Value,'Bilinear Transformation')
+            
+                sos = zp2sos(Z1,P1,K1);
+                            
+                [h1,w1] = freqz(sos);    
+                plot(app.UIAxes, w1/pi,20*log10(abs(h1)))
+                            
+                plot(app.UIAxes2, w1/pi, -unwrap(angle(h1))./w1)
+                
+                [h2,w2] = grpdelay(sos);            
+                plot(app.UIAxes3, w2/pi, h2)
+            
+            elseif strcmp(app.DesignTechniqueDropDown.Value,'Impulse Invariance')
+                
+                [B2,A2] = impinvar(B,A,app.SamplingFrequencyEditField.Value);
+                
+                [h1,w1] = freqz(B2,A2,1024,app.SamplingFrequencyEditField.Value);   
+                plot(app.UIAxes, w1/pi,20*log10(abs(h1)))
+                            
+                plot(app.UIAxes2, w1/pi, -unwrap(angle(h1))./w1)
+                
+                [h2,w2] = grpdelay(B2,A2);            
+                plot(app.UIAxes3, w2/pi, h2)
+            else
+            end
+            
+            
+            
+        end
+        % Value changed function: ResponseTypeDropDown
+        function ResponseTypeDropDownValueChanged(app, event)
+            value = app.ResponseTypeDropDown.Value;
+            
+        end
+        % Value changed function: TypeDropDown
+        function TypeDropDownValueChanged(app, event)
+            value = app.TypeDropDown.Value;
+            
+        end
+        % Value changed function: WindowDropDown
+        function WindowDropDownFcn(app, event)
+            value = app.WindowDropDown.Value;
+            
+        end
+    end
+    % App initialization and construction
+    methods (Access = private)
+        % Create UIFigure and components
+        function createComponents(app)
+            % Create UIFigure
+            app.UIFigure = uifigure;
+            app.UIFigure.Color = [0.9412 0.9412 0.9412];
+            app.UIFigure.Position = [100 100 639 552];
+            app.UIFigure.Name = 'UI Figure';
+            % Create FIRButton
+            app.FIRButton = uibutton(app.UIFigure, 'push');
+            app.FIRButton.ButtonPushedFcn = createCallbackFcn(app, @FIRButtonPushed, true);
+            app.FIRButton.BackgroundColor = [0.4706 0.6706 0.1882];
+            app.FIRButton.FontColor = [1 1 1];
+            app.FIRButton.Position = [127 393 100 22];
+            app.FIRButton.Text = 'FIR';
+            % Create WindowDropDownLabel
+            app.WindowDropDownLabel = uilabel(app.UIFigure);
+            app.WindowDropDownLabel.BackgroundColor = [0.4706 0.6706 0.1882];
+            app.WindowDropDownLabel.HorizontalAlignment = 'right';
+            app.WindowDropDownLabel.FontColor = [1 1 1];
+            app.WindowDropDownLabel.Position = [19 430 49 15];
+            app.WindowDropDownLabel.Text = 'Window';
+            % Create WindowDropDown
+            app.WindowDropDown = uidropdown(app.UIFigure);
+            app.WindowDropDown.Items = {'rectwin', 'hann', 'hamming', 'blackman', 'kaiser'};
+            app.WindowDropDown.ValueChangedFcn = createCallbackFcn(app, @WindowDropDownFcn, true);
+            app.WindowDropDown.FontColor = [1 1 1];
+            app.WindowDropDown.BackgroundColor = [0.4706 0.6706 0.1882];
+            app.WindowDropDown.Position = [83 426 227 22];
+            app.WindowDropDown.Value = 'rectwin';
+            % Create SamplingFrequencyEditFieldLabel
+            app.SamplingFrequencyEditFieldLabel = uilabel(app.UIFigure);
+            app.SamplingFrequencyEditFieldLabel.BackgroundColor = [0 0.451 0.7412];
+            app.SamplingFrequencyEditFieldLabel.HorizontalAlignment = 'right';
+            app.SamplingFrequencyEditFieldLabel.FontColor = [1 1 1];
+            app.SamplingFrequencyEditFieldLabel.Position = [19.03125 502 116 15];
+            app.SamplingFrequencyEditFieldLabel.Text = 'Sampling Frequency';
+            % Create SamplingFrequencyEditField
+            app.SamplingFrequencyEditField = uieditfield(app.UIFigure, 'numeric');
+            app.SamplingFrequencyEditField.ValueChangedFcn = createCallbackFcn(app, @FsField, true);
+            app.SamplingFrequencyEditField.FontColor = [1 1 1];
+            app.SamplingFrequencyEditField.BackgroundColor = [0 0.451 0.7412];
+            app.SamplingFrequencyEditField.Position = [150.03125 498 100 22];
+            % Create FilterOrderEditFieldLabel
+            app.FilterOrderEditFieldLabel = uilabel(app.UIFigure);
+            app.FilterOrderEditFieldLabel.BackgroundColor = [0 0.451 0.7412];
+            app.FilterOrderEditFieldLabel.HorizontalAlignment = 'right';
+            app.FilterOrderEditFieldLabel.FontColor = [1 1 1];
+            app.FilterOrderEditFieldLabel.Position = [257.703125 502 66 15];
+            app.FilterOrderEditFieldLabel.Text = 'Filter Order';
+            % Create FilterOrderEditField
+            app.FilterOrderEditField = uieditfield(app.UIFigure, 'numeric');
+            app.FilterOrderEditField.ValueChangedFcn = createCallbackFcn(app, @FilterOrderField, true);
+            app.FilterOrderEditField.FontColor = [1 1 1];
+            app.FilterOrderEditField.BackgroundColor = [0 0.451 0.7412];
+            app.FilterOrderEditField.Position = [338.703125 498 100 22];
+            % Create TypeDropDownLabel
+            app.TypeDropDownLabel = uilabel(app.UIFigure);
+            app.TypeDropDownLabel.BackgroundColor = [0 0.451 0.7412];
+            app.TypeDropDownLabel.HorizontalAlignment = 'right';
+            app.TypeDropDownLabel.FontColor = [1 1 1];
+            app.TypeDropDownLabel.Position = [19 469 31 15];
+            app.TypeDropDownLabel.Text = 'Type';
+            % Create TypeDropDown
+            app.TypeDropDown = uidropdown(app.UIFigure);
+            app.TypeDropDown.Items = {'low', 'high', 'bandpass', 'bandstop'};
+            app.TypeDropDown.ValueChangedFcn = createCallbackFcn(app, @TypeDropDownValueChanged, true);
+            app.TypeDropDown.FontColor = [1 1 1];
+            app.TypeDropDown.BackgroundColor = [0 0.451 0.7412];
+            app.TypeDropDown.Position = [83 465 538 22];
+            app.TypeDropDown.Value = 'low';
+            % Create DesignTechniqueDropDownLabel
+            app.DesignTechniqueDropDownLabel = uilabel(app.UIFigure);
+            app.DesignTechniqueDropDownLabel.BackgroundColor = [0.6392 0.0784 0.1804];
+            app.DesignTechniqueDropDownLabel.HorizontalAlignment = 'right';
+            app.DesignTechniqueDropDownLabel.FontColor = [1 1 1];
+            app.DesignTechniqueDropDownLabel.Position = [345 397 101 15];
+            app.DesignTechniqueDropDownLabel.Text = 'Design Technique';
+            % Create DesignTechniqueDropDown
+            app.DesignTechniqueDropDown = uidropdown(app.UIFigure);
+            app.DesignTechniqueDropDown.Items = {'Bilinear Transformation', 'Impulse Invariance'};
+            app.DesignTechniqueDropDown.ValueChangedFcn = createCallbackFcn(app, @DesignTechniqueDropDownValueChanged, true);
+            app.DesignTechniqueDropDown.FontColor = [1 1 1];
+            app.DesignTechniqueDropDown.BackgroundColor = [0.6392 0.0784 0.1804];
+            app.DesignTechniqueDropDown.Position = [461 393 149 22];
+            app.DesignTechniqueDropDown.Value = 'Bilinear Transformation';
+            % Create ResponseTypeDropDownLabel
+            app.ResponseTypeDropDownLabel = uilabel(app.UIFigure);
+            app.ResponseTypeDropDownLabel.BackgroundColor = [0.6392 0.0784 0.1804];
+            app.ResponseTypeDropDownLabel.HorizontalAlignment = 'right';
+            app.ResponseTypeDropDownLabel.FontColor = [1 1 1];
+            app.ResponseTypeDropDownLabel.Position = [345 430 88 15];
+            app.ResponseTypeDropDownLabel.Text = 'Response Type';
+            % Create ResponseTypeDropDown
+            app.ResponseTypeDropDown = uidropdown(app.UIFigure);
+            app.ResponseTypeDropDown.Items = {'Butterworth', 'Chebyshev I', 'Chebyshev II'};
+            app.ResponseTypeDropDown.ValueChangedFcn = createCallbackFcn(app, @ResponseTypeDropDownValueChanged, true);
+            app.ResponseTypeDropDown.FontColor = [1 1 1];
+            app.ResponseTypeDropDown.BackgroundColor = [0.6392 0.0784 0.1804];
+            app.ResponseTypeDropDown.Position = [461 426 149 22];
+            app.ResponseTypeDropDown.Value = 'Butterworth';
+            % Create IIRButton
+            app.IIRButton = uibutton(app.UIFigure, 'push');
+            app.IIRButton.ButtonPushedFcn = createCallbackFcn(app, @IIRbutton, true);
+            app.IIRButton.BackgroundColor = [0.6392 0.0784 0.1804];
+            app.IIRButton.FontColor = [1 1 1];
+            app.IIRButton.Position = [410 364 100 22];
+            app.IIRButton.Text = 'IIR';
+            % Create UIAxes
+            app.UIAxes = uiaxes(app.UIFigure);
+            title(app.UIAxes, 'Magnitude Plot')
+            xlabel(app.UIAxes, 'Normalized Frequency (\times\pi rad/sample)')
+            ylabel(app.UIAxes, 'Magnitude (dB)')
+            app.UIAxes.Box = 'on';
+            app.UIAxes.XGrid = 'on';
+            app.UIAxes.YGrid = 'on';
+            app.UIAxes.Position = [11 201 300 185];
+            % Create Cutoff1EditFieldLabel
+            app.Cutoff1EditFieldLabel = uilabel(app.UIFigure);
+            app.Cutoff1EditFieldLabel.BackgroundColor = [0 0.451 0.7412];
+            app.Cutoff1EditFieldLabel.HorizontalAlignment = 'right';
+            app.Cutoff1EditFieldLabel.FontColor = [1 1 1];
+            app.Cutoff1EditFieldLabel.Position = [457.03125 523 45 15];
+            app.Cutoff1EditFieldLabel.Text = 'Cutoff1';
+            % Create Cutoff1EditField
+            app.Cutoff1EditField = uieditfield(app.UIFigure, 'numeric');
+            app.Cutoff1EditField.ValueChangedFcn = createCallbackFcn(app, @CutOff1, true);
+            app.Cutoff1EditField.FontColor = [1 1 1];
+            app.Cutoff1EditField.BackgroundColor = [0 0.451 0.7412];
+            app.Cutoff1EditField.Position = [517.03125 519 100 22];
+            % Create Cutoff2EditFieldLabel
+            app.Cutoff2EditFieldLabel = uilabel(app.UIFigure);
+            app.Cutoff2EditFieldLabel.BackgroundColor = [0 0.451 0.7412];
+            app.Cutoff2EditFieldLabel.HorizontalAlignment = 'right';
+            app.Cutoff2EditFieldLabel.FontColor = [1 1 1];
+            app.Cutoff2EditFieldLabel.Position = [457.03125 499 45 15];
+            app.Cutoff2EditFieldLabel.Text = 'Cutoff2';
+            % Create Cutoff2EditField
+            app.Cutoff2EditField = uieditfield(app.UIFigure, 'numeric');
+            app.Cutoff2EditField.ValueChangedFcn = createCallbackFcn(app, @Cutoff2EditFieldValueChanged, true);
+            app.Cutoff2EditField.FontColor = [1 1 1];
+            app.Cutoff2EditField.BackgroundColor = [0 0.451 0.7412];
+            app.Cutoff2EditField.Position = [517.03125 495 100 22];
+            % Create UIAxes2
+            app.UIAxes2 = uiaxes(app.UIFigure);
+            title(app.UIAxes2, 'Phase Plot')
+            xlabel(app.UIAxes2, 'Normalized Frequency (\times\pi rad/sample)')
+            ylabel(app.UIAxes2, 'Phase (degrees)')
+            app.UIAxes2.Box = 'on';
+            app.UIAxes2.XGrid = 'on';
+            app.UIAxes2.YGrid = 'on';
+            app.UIAxes2.Position = [11 11 300 185];
+            % Create UIAxes3
+            app.UIAxes3 = uiaxes(app.UIFigure);
+            title(app.UIAxes3, 'Group Delay Plot')
+            xlabel(app.UIAxes3, 'Normalized Frequency (\times\pi rad/sample)')
+            ylabel(app.UIAxes3, 'Group delay (samples)')
+            app.UIAxes3.Box = 'on';
+            app.UIAxes3.XGrid = 'on';
+            app.UIAxes3.YGrid = 'on';
+            app.UIAxes3.Position = [310 11 300 185];
+        end
+    end
+    methods (Access = public)
+        % Construct app
+        function app = app1
+            % Create and configure components
+            createComponents(app)
+            % Register the app with App Designer
+            registerApp(app, app.UIFigure)
+            if nargout == 0
+                clear app
+            end
+        end
+        % Code that executes before app deletion
+        function delete(app)
+            % Delete UIFigure when app is deleted
+            delete(app.UIFigure)
+        end
+    end
+end
